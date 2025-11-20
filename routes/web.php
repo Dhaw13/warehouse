@@ -1,4 +1,5 @@
 <?php
+use App\Http\Controllers\PurchaseOrderController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\VerifikasiController;
 use App\Http\Controllers\BarangController;
@@ -22,7 +23,7 @@ Route::middleware('auth')->group(function () {
    
   
 
-
+ Route::resource('po', PurchaseOrderController::class); 
 
  Route::resource('laporan', LaporanPenerimaanController::class);
    

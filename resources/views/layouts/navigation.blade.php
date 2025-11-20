@@ -28,11 +28,17 @@
     </div>
 
     <nav class="mt-3 flex-grow-1">
+        
         @can('view barang')
             <a href="{{ route('pbarang.index') }}" class="nav-link px-3 py-2 d-flex align-items-center gap-2">
                 <i class="bi bi-box-seam"></i> <span>Pencatatan Barang Masuk</span>
             </a>
         @endcan
+    @can('view po')
+        <a href="{{ route('po.index') }}" class="nav-link px-3 py-2 d-flex align-items-center gap-2">
+            <i class="bi bi-file-earmark-text"></i> <span>Purchase Order (PO)</span>
+        </a>
+    @endcan
 
         @can('view laporan')    
             <a href="{{ route('laporan.index') }}" class="nav-link px-3 py-2 d-flex align-items-center gap-2">
