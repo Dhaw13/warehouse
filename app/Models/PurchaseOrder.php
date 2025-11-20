@@ -35,6 +35,10 @@ class PurchaseOrder extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+    public function verifikasi()
+{
+    return $this->hasMany(VerifikasiBarang::class, 'id_barang');
+}
 
     // Generate nomor PO otomatis
     public static function generateNoPo()

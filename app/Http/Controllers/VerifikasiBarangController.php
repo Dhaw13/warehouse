@@ -1,85 +1,87 @@
 <?php
 
-// app/Http/Controllers/VerifikasiBarangController.php
-
 namespace App\Http\Controllers;
 
 use App\Models\Barang;
+use App\Models\PurchaseOrder;
 use App\Models\VerifikasiBarang;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class VerifikasiBarangController extends Controller
 {
-    // ✅ WAJIB: Tampilkan daftar barang untuk diverifikasi
+    // Index: Tampilkan PO yang perlu diverifikasi
     public function index()
     {
-        // Tampilkan SEMUA barang + relasi verifikasi (agar bisa edit/tolak)
-        $barangs = Barang::with('verifikasiBarang')->latest()->paginate(10);
-        return view('verifikasi.index', compact('barangs'));
+        // Ambil PO yang sudah approved tapi belum diverifikasi
+        $purchaseOrders = PurchaseOrder::with('items')
+            ->where('status', 'approved')
+            ->whereDoesntHave('verifikasi') // PO yang belum ada verifikasinya
+            ->latest()
+            ->paginate(10);
+
+        return view('verifikasi.index', compact('purchaseOrders'));
     }
 
-    // Form verifikasi baru
-    public function create(Barang $barang)
+    // Show: Detail PO untuk verifikasi
+    public function show($poId)
     {
-        return view('verifikasi.create', compact('barang'));
+        $po = PurchaseOrder::with('items')->findOrFail($poId);
+        return view('verifikasi.show', compact('po'));
     }
 
-    // Simpan verifikasi
-    public function store(Request $request, Barang $barang)
+    // Store: Approve/Reject PO sekaligus
+    public function store(Request $request, $poId)
     {
-        $validator = Validator::make($request->all(), [
-            'jumlah_valid' => 'required|integer|min:0',
-            'kualitas_valid' => 'required|in:baik,sedang,buruk,rusak',
+        $request->validate([
             'status' => 'required|in:verified,rejected',
             'catatan' => 'nullable|string',
         ]);
 
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
+        $po = PurchaseOrder::with('items')->findOrFail($poId);
+
+        DB::beginTransaction();
+        try {
+            // 1. Simpan verifikasi untuk setiap item PO
+            foreach ($po->items as $item) {
+                // Cek apakah barang sudah ada di master, kalau belum buat baru
+                $barang = Barang::firstOrCreate(
+                    ['nama_barang' => $item->nama_barang],
+                    [
+                        'kode_barang' => 'BRG-' . strtoupper(uniqid()),
+                        'jumlah' => 0,
+                        'satuan' => $item->satuan,
+                        'kondisi' => 'baru',
+                        'tanggal_masuk' => now(),
+                    ]
+                );
+
+                // Jika approved, tambah stok
+                if ($request->status === 'verified') {
+                    $barang->increment('jumlah', $item->qty);
+                }
+
+                // Simpan verifikasi
+                VerifikasiBarang::create([
+                    'id_barang' => $barang->id,
+                    'jumlah_valid' => $item->qty,
+                    'kualitas_valid' => 'baik', // Default baik
+                    'status' => $request->status,
+                    'catatan' => $request->catatan,
+                    'tanggal_verifikasi' => now(),
+                ]);
+            }
+
+            // 2. Update status PO
+            $po->update([
+                'status' => $request->status === 'verified' ? 'completed' : 'rejected'
+            ]);
+
+            DB::commit();
+            return redirect()->route('verifikasi.index')->with('success', 'Verifikasi berhasil!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal verifikasi: ' . $e->getMessage());
         }
-
-        // Cegah duplikasi jika perlu
-        if ($barang->verifikasiBarang()->exists()) {
-            return redirect()->back()->withErrors('Barang ini sudah diverifikasi.');
-        }
-
-        $verifikasi = new VerifikasiBarang();
-        $verifikasi->id_barang = $barang->id;
-        $verifikasi->jumlah_valid = $request->jumlah_valid;
-        $verifikasi->kualitas_valid = $request->kualitas_valid;
-        $verifikasi->status = $request->status;
-        $verifikasi->catatan = $request->catatan;
-        $verifikasi->tanggal_verifikasi = now();
-        $verifikasi->save();
-
-        return redirect()->route('verifikasi.index')->with('success', 'Verifikasi berhasil disimpan.');
     }
-
-    // Form edit verifikasi
-    public function edit(VerifikasiBarang $verifikasi)
-    {
-        return view('verifikasi.edit', compact('verifikasi'));
-    }
-
-    // Update verifikasi
-    public function update(Request $request, VerifikasiBarang $verifikasi)
-    {
-        $validator = Validator::make($request->all(), [
-            'status' => 'required|in:verified,rejected',
-            'catatan' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
-
-        $verifikasi->status = $request->status;
-        $verifikasi->catatan = $request->catatan;
-        $verifikasi->tanggal_verifikasi = now();
-        $verifikasi->save();
-
-        return redirect()->route('verifikasi.index')->with('success', 'Verifikasi berhasil diperbarui.');
-    }
-
 }
