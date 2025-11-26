@@ -39,6 +39,9 @@ Route::middleware('auth')->group(function () {
  Route::resource('roles', RoleController::class);
     
  Route::resource('users', UserController::class);
+ Route::resource('laporan', LaporanPenerimaanController::class);
+ Route::get('/laporan/{id}/download', [LaporanPenerimaanController::class, 'download'])
+        ->name('laporan.download'); 
 
 });
 

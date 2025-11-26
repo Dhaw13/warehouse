@@ -4,6 +4,7 @@
             <h3>Laporan Penerimaan Barang</h3>
            
         </div>
+        
 
         @if(session('success'))
             <div class="alert alert-success mt-3">{{ session('success') }}</div>
@@ -49,5 +50,18 @@
 
         {{ $laporans->links() }}
     </div>
-   
+   <td>
+    @if($laporan->file_laporan)
+        <a href="{{ route('laporan.download', $laporan->id) }}" 
+           class="btn btn-sm btn-success">
+            <i class="bi bi-download"></i> Download PDF
+        </a>
+    @else
+        <!-- Untuk rejected PO, generate on-the-fly -->
+        <a href="{{ route('laporan.download', $laporan->id) }}" 
+           class="btn btn-sm btn-primary">
+            <i class="bi bi-file-pdf"></i> Download PDF
+        </a>
+    @endif
+</td>
 </x-app-layout>

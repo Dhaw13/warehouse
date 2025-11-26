@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Barang;
 use App\Models\LaporanPenerimaan;
 use Illuminate\Http\Request;
-use PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class LaporanPenerimaanController extends Controller
 {
@@ -17,7 +17,7 @@ class LaporanPenerimaanController extends Controller
 
     public function create()
     {
-        $barangs = Barang::all(); // biar user bisa pilih barang
+        $barangs = Barang::all();
         return view('laporan.create', compact('barangs'));
     }
 
@@ -28,55 +28,32 @@ class LaporanPenerimaanController extends Controller
             'id_barang' => 'required|exists:barangs,id',
         ]);
 
-        // Ambil data barang
         $barang = Barang::findOrFail($request->id_barang);
 
-        // Simpan laporan
         $laporan = LaporanPenerimaan::create([
-            'barang_id' => $barang->id, 
+            'barang_id' => $barang->id,
             'periode' => $request->periode,
-            'tanggal_cetak' => now()->toDateString(),
+            'tanggal_cetak' => now(),
             'total_barang' => $barang->jumlah,
             'file_laporan' => null,
         ]);
 
-        // Generate PDF laporan
-        $pdfPath = $this->generatePDF($barang, $laporan);
-
-        // Update file laporan
-        $laporan->update(['file_laporan' => $pdfPath]);
-
         return redirect()->route('laporan.index')->with('success', 'Laporan berhasil dibuat!');
     }
 
-    protected function generatePDF($barang, $laporan)
-    {
-        $pdf = PDF::loadView('laporan.pdf', [
-            'barang' => $barang,
-            'laporan' => $laporan,
-        ]);
-
-        $filename = "laporan_penerimaan_{$laporan->id}.pdf";
-        $path = "laporan/{$filename}";
-        \Storage::disk('public')->put($path, $pdf->output());
-
-        return $path;
-    }
-
+    // Download PDF
     public function download($id)
     {
-        $laporan = LaporanPenerimaan::findOrFail($id);
+        $laporan = LaporanPenerimaan::with('barangs')->findOrFail($id);
 
-        if (!$laporan->file_laporan) {
-            return redirect()->back()->with('error', 'File laporan belum tersedia.');
-        }
+        // Generate PDF
+        $pdf = Pdf::loadView('laporan.pdf', [
+            'laporan' => $laporan,
+            'barang' => $laporan->barangs,
+        ]);
 
-        $filePath = storage_path('app/public/' . $laporan->file_laporan);
+        $filename = "Laporan_Penerimaan_{$laporan->id}_" . now()->format('Ymd_His') . ".pdf";
 
-        if (!file_exists($filePath)) {
-            return redirect()->back()->with('error', 'File laporan tidak ditemukan.');
-        }
-
-        return response()->download($filePath);
+        return $pdf->download($filename);
     }
 }
