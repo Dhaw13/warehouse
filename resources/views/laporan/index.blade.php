@@ -29,28 +29,7 @@
                         <td>{{ $laporan->periode }}</td>
                         <td>{{ $laporan->tanggal_cetak ? $laporan->tanggal_cetak->format('d-m-Y') : '-' }}</td>
                         <td>{{ $laporan->total_barang }}</td>
-                        <td>
-                            @if($laporan->file_laporan)
-                                <a href="{{ route('laporan.download', $laporan->id) }}" class="btn btn-sm btn-success">
-                                    Download PDF
-                                </a>
-                            @else
-                                <span class="text-muted">Belum tersedia</span>
-                            @endif
-                        </td>
-                    </tr>
-                @empty
-                  <a href="#" class="btn btn-primary ">Download PDF</a>
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">Belum ada laporan.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-
-        {{ $laporans->links() }}
-    </div>
-   <td>
+                         <td>
     @if($laporan->file_laporan)
         <a href="{{ route('laporan.download', $laporan->id) }}" 
            class="btn btn-sm btn-success">
@@ -64,4 +43,17 @@
         </a>
     @endif
 </td>
+                    </tr>
+                @empty
+                  <a href="#" class="btn btn-primary ">Download PDF</a>
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">Belum ada laporan.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+
+        {{ $laporans->links() }}
+    </div>
+   
 </x-app-layout>
