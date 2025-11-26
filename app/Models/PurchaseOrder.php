@@ -35,9 +35,17 @@ class PurchaseOrder extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
-    public function verifikasi()
+    // app/Models/PurchaseOrder.php
+public function verifikasi()
 {
-    return $this->hasMany(VerifikasiBarang::class, 'id_barang');
+    return $this->hasMany(VerifikasiBarang::class, 'purchase_order_id');
+}
+
+// Tambahkan scope untuk cek apakah sudah diverifikasi
+public function scopeBelumVerifikasi($query)
+{
+    return $query->where('status', 'draft')
+                 ->whereDoesntHave('verifikasi');
 }
 
     // Generate nomor PO otomatis

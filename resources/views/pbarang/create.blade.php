@@ -21,6 +21,20 @@
                 @error('nama_barang') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
 
+            <!-- Dropdown Supplier (BARU) -->
+            <div class="mb-3">
+                <label for="id_supplier" class="form-label">Supplier</label>
+                <select name="id_supplier" id="id_supplier" class="form-select @error('id_supplier') is-invalid @enderror">
+                    <option value="">-- Pilih Supplier (Opsional) --</option>
+                    @foreach($suppliers ?? [] as $supplier)
+                        <option value="{{ $supplier->id }}" {{ old('id_supplier') == $supplier->id ? 'selected' : '' }}>
+                            {{ $supplier->nama_supplier }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('id_supplier') <div class="invalid-feedback">{{ $message }}</div> @enderror
+            </div>
+
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label for="jumlah" class="form-label">Jumlah</label>

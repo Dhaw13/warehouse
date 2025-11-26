@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Barang;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Models\Supplier;
 
 class BarangController extends Controller
 {
@@ -16,9 +17,10 @@ class BarangController extends Controller
     }
 
     public function create()
-    {
-        return view('pbarang.create');
-    }
+   {
+    $suppliers = Supplier::all(); // Ambil semua supplier
+    return view('pbarang.create', compact('suppliers'));
+   }
 
     public function store(Request $request)
     {
@@ -50,10 +52,11 @@ class BarangController extends Controller
     }
 
     public function edit($id)
-    {
-        $barang = Barang::findOrFail($id);
-        return view('pbarang.edit', compact('barang'));
-    }
+{
+    $barang = Barang::findOrFail($id);
+    $suppliers = Supplier::all();
+    return view('pbarang.edit', compact('barang', 'suppliers'));
+}
 
     public function update(Request $request, $id)
     {

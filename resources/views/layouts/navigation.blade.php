@@ -36,19 +36,18 @@
         @endcan
     @can('view po')
         <a href="{{ route('po.index') }}" class="nav-link px-3 py-2 d-flex align-items-center gap-2">
-            <i class="bi bi-file-earmark-text"></i> <span>Purchase Order (PO)</span>
+            <i class="bi bi-file-earmark-text"></i> <span>Input Order (PO)</span>
         </a>
     @endcan
 
+        @can('view verifikasi')
+            <a href="{{ route('verifikasi.index') }}" class="nav-link px-3 py-2 d-flex align-items-center gap-2">
+                <i class="bi bi-check2-square"></i> <span>Verifikasi</span>
+            </a>
+        @endcan
         @can('view laporan')    
             <a href="{{ route('laporan.index') }}" class="nav-link px-3 py-2 d-flex align-items-center gap-2">
                 <i class="bi bi-clipboard-check"></i> <span>Laporan Penerimaan</span>
-            </a>
-        @endcan
-
-        @can('view verifikasi')
-            <a href="{{ route('verifikasi.index') }}" class="nav-link px-3 py-2 d-flex align-items-center gap-2">
-                <i class="bi bi-check2-square"></i> <span>Verifikasi Barang</span>
             </a>
         @endcan
             

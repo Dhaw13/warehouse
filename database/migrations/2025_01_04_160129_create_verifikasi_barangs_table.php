@@ -10,16 +10,15 @@ return new class extends Migration
     {
         Schema::create('verifikasi_barangs', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('id_barang'); // relasi ke barangs
-            $table->integer('jumlah_valid');
-            $table->string('kualitas_valid');
-            $table->string('status')->default('pending'); // pending, verified, rejected
+            $table->foreignId('purchase_order_id')->constrained()->onDelete('cascade');
+            $table->foreignId('po_item_id')->constrained('purchase_order_items')->onDelete('cascade');
+            $table->foreignId('barang_id')->nullable()->constrained('barangs')->onDelete('set null'); // Link ke master barang
+            $table->integer('jumlah_diterima'); // Jumlah aktual yang diterima
+            $table->string('kualitas_valid'); // baik, rusak, dll
+            $table->enum('status', ['verified', 'rejected'])->default('verified');
             $table->text('catatan')->nullable();
             $table->date('tanggal_verifikasi');
             $table->timestamps();
-
-            // Foreign key (opsional, tapi disarankan)
-            $table->foreign('id_barang')->references('id')->on('barangs')->onDelete('cascade');
         });
     }
 
