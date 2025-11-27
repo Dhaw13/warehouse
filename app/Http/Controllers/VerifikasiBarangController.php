@@ -34,99 +34,80 @@ class VerifikasiBarangController extends Controller
 
     // Store: Simpan verifikasi
     public function store(Request $request, $poId)
-    {
-        $request->validate([
-            'status' => 'required|in:verified,rejected',
-            'catatan' => 'nullable|string',
-        ]);
+{
+    $request->validate([
+        'status' => 'required|in:verified,rejected',
+        'catatan' => 'nullable|string',
+    ]);
 
-        $po = PurchaseOrder::with('items')->findOrFail($poId);
+    $po = PurchaseOrder::with('items')->findOrFail($poId);
 
-        DB::beginTransaction();
-        try {
-            $status = $request->status;
-            $catatan = $request->catatan;
+    DB::beginTransaction();
+    try {
+        $status = $request->status;
+        $catatan = $request->catatan;
 
-            // Loop semua item PO, buat verifikasi masing-masing
-            foreach ($po->items as $item) {
-                VerifikasiBarang::create([
-                    'purchase_order_id' => $po->id,
-                    'po_item_id' => $item->id,
-                    'barang_id' => null,
-                    'jumlah_diterima' => $status === 'verified' ? $item->qty : 0,
-                    'kualitas_valid' => $status === 'verified' ? 'baik' : 'rejected',
-                    'status' => $status,
-                    'catatan' => $catatan,
-                    'tanggal_verifikasi' => now(),
-                ]);
-
-                // JIKA APPROVED: Update stok barang
-                if ($status === 'verified') {
-                    $barang = Barang::firstOrCreate(
-                        ['nama_barang' => $item->nama_barang],
-                        [
-                            'kode_barang' => 'AUTO-' . strtoupper(substr($item->nama_barang, 0, 3)) . rand(100, 999),
-                            'jumlah' => 0,
-                            'satuan' => $item->satuan,
-                            'kondisi' => 'baik',
-                            'tanggal_masuk' => now(),
-                        ]
-                    );
-                    $barang->increment('jumlah', $item->qty);
-
-                    // Generate laporan approved
-                    LaporanPenerimaan::create([
-                        'barang_id' => $barang->id,
-                        'periode' => now()->format('F Y'),
-                        'tanggal_cetak' => now(),
-                        'total_barang' => $item->qty,
-                        'file_laporan' => null,
-                    ]);
-                }
-
-                // JIKA REJECTED: Generate laporan rejected
-                if ($status === 'rejected') {
-                    // Cari atau buat barang untuk laporan rejected
-                    $barang = Barang::where('nama_barang', $item->nama_barang)->first();
-                    
-                    if (!$barang) {
-                        // Buat record barang baru (tanpa stok) untuk laporan
-                        $barang = Barang::create([
-                            'kode_barang' => 'REJ-' . strtoupper(substr($item->nama_barang, 0, 3)) . rand(100, 999),
-                            'nama_barang' => $item->nama_barang,
-                            'jumlah' => 0,
-                            'satuan' => $item->satuan,
-                            'kondisi' => 'rejected',
-                            'tanggal_masuk' => now(),
-                        ]);
-                    }
-
-                    LaporanPenerimaan::create([
-                        'barang_id' => $barang->id,
-                        'periode' => now()->format('F Y'),
-                        'tanggal_cetak' => now(),
-                        'total_barang' => 0, // Rejected = 0
-                        'file_laporan' => null,
-                    ]);
-                }
-            }
-
-            // Update status PO
-            $po->update([
-                'status' => $status === 'verified' ? 'approved' : 'rejected'
+        // Loop semua item PO, buat verifikasi masing-masing
+        foreach ($po->items as $item) {
+            // 1. Buat record verifikasi
+            VerifikasiBarang::create([
+                'purchase_order_id' => $po->id,
+                'po_item_id' => $item->id,
+                'barang_id' => null,
+                'jumlah_diterima' => $status === 'verified' ? $item->qty : 0,
+                'kualitas_valid' => $status === 'verified' ? 'baik' : 'rejected',
+                'status' => $status,
+                'catatan' => $catatan,
+                'tanggal_verifikasi' => now(),
             ]);
 
-            DB::commit();
+            // 2. Cari atau buat barang (untuk APPROVED & REJECTED)
+            $barang = Barang::where('nama_barang', $item->nama_barang)->first();
+            
+            if (!$barang) {
+                // Buat barang baru jika belum ada
+                $barang = Barang::create([
+                    'kode_barang' => strtoupper(substr($item->nama_barang, 0, 3)) . '-' . rand(1000, 9999),
+                    'nama_barang' => $item->nama_barang,
+                    'jumlah' => 0, // Default 0, akan diupdate jika approved
+                    'satuan' => $item->satuan,
+                    'kondisi' => $status === 'verified' ? 'baik' : 'rejected',
+                    'tanggal_masuk' => now(),
+                    'id_supplier' => null,
+                ]);
+            }
 
-            return redirect()->route('laporan.index')
-                ->with('success', $status === 'verified' 
-                    ? '✅ PO berhasil di-approve! Stok barang telah ditambahkan.' 
-                    : '❌ PO ditolak. Laporan penolakan telah dibuat.');
+            // 3. Update stok HANYA jika approved
+            if ($status === 'verified') {
+                $barang->increment('jumlah', $item->qty);
+                $barang->update(['kondisi' => 'baik']);
+            }
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()
-                ->with('error', 'Gagal verifikasi: ' . $e->getMessage());
+            // 4. Buat laporan (UNTUK APPROVED & REJECTED)
+            LaporanPenerimaan::create([
+                'barang_id' => $barang->id,
+                'periode' => now()->format('F Y'),
+                'tanggal_cetak' => now(),
+                'total_barang' => $status === 'verified' ? $item->qty : 0,
+                'file_laporan' => null,
+            ]);
         }
+
+        // 5. Update status PO
+        $po->update([
+            'status' => $status === 'verified' ? 'approved' : 'rejected'
+        ]);
+
+        DB::commit();
+
+        return redirect()->route('laporan.index')
+            ->with('success', $status === 'verified' 
+                ? '✅ PO berhasil di-approve! Stok barang telah ditambahkan.' 
+                : '❌ PO ditolak. Laporan penolakan telah dibuat.');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()->back()
+            ->with('error', 'Gagal verifikasi: ' . $e->getMessage());
     }
-}
+}}

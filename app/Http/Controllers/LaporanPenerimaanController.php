@@ -11,7 +11,14 @@ class LaporanPenerimaanController extends Controller
 {
     public function index()
     {
-        $laporans = LaporanPenerimaan::with('barangs')->latest()->paginate(10);
+        // ✅ PERBAIKAN: Ambil SEMUA laporan (approved dan rejected)
+        $laporans = LaporanPenerimaan::with('barangs')
+            ->latest('tanggal_cetak')
+            ->paginate(10);
+        
+        // 🔍 DEBUG: Uncomment untuk cek data
+        //dd($laporans->toArray());
+        
         return view('laporan.index', compact('laporans'));
     }
 
@@ -30,14 +37,31 @@ class LaporanPenerimaanController extends Controller
 
         $barang = Barang::findOrFail($request->id_barang);
 
-        $laporan = LaporanPenerimaan::create([
-            'barang_id' => $barang->id,
-            'periode' => $request->periode,
-            'tanggal_cetak' => now(),
-            'total_barang' => $barang->jumlah,
-            'file_laporan' => null,
-        ]);
+        // Untuk APPROVED
+LaporanPenerimaan::create([
+    'barang_id' => $barang->id,
+    'purchase_order_id' => $po->id,
+    'nama_barang' => $item->nama_barang,
+    'periode' => now()->format('F Y'),
+    'tanggal_cetak' => now(),
+    'total_barang' => $item->qty,
+    'status' => 'approved',
+    'catatan' => $catatan,
+    'file_laporan' => null,
+]);
 
+// Untuk REJECTED (tanpa barang_id)
+LaporanPenerimaan::create([
+    'barang_id' => null, // ← NULL untuk rejected
+    'purchase_order_id' => $po->id,
+    'nama_barang' => $item->nama_barang,
+    'periode' => now()->format('F Y'),
+    'tanggal_cetak' => now(),
+    'total_barang' => 0,
+    'status' => 'rejected',
+    'catatan' => $catatan,
+    'file_laporan' => null,
+]);
         return redirect()->route('laporan.index')->with('success', 'Laporan berhasil dibuat!');
     }
 
