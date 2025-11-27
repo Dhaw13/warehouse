@@ -27,10 +27,7 @@ Route::middleware('auth')->group(function () {
  Route::get('/verifikasi', [VerifikasiBarangController::class, 'index'])->name('verifikasi.index');
  Route::get('/verifikasi/{po}', [VerifikasiBarangController::class, 'show'])->name('verifikasi.show');
  Route::post('/verifikasi/{po}', [VerifikasiBarangController::class, 'store'])->name('verifikasi.store');
-
- Route::resource('laporan', LaporanPenerimaanController::class);
    
- Route::resource('verifikasi', VerifikasiBarangController::class);
 
  Route::resource('pbarang', BarangController::class);
 
