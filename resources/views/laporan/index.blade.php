@@ -1,10 +1,6 @@
- <x-app-layout>
+<x-app-layout>
     <div class="container mt-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <h3>Laporan Penerimaan Barang</h3>
-           
-        </div>
-        
+        <h3>Laporan Penerimaan Barang</h3>
 
         @if(session('success'))
             <div class="alert alert-success mt-3">{{ session('success') }}</div>
@@ -15,10 +11,11 @@
                 <tr>
                     <th>No</th>
                     <th>Nama Barang</th>
-                    <th>periode</th>
+                    <th>Periode</th>
                     <th>Tanggal Cetak</th>
                     <th>Total Barang</th>
                     <th>Status</th>
+                    <th>Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -27,25 +24,23 @@
                         <td>{{ $laporans->firstItem() + $index }}</td>
                         <td>{{ $laporan->barangs->nama_barang ?? '-' }}</td>
                         <td>{{ $laporan->periode }}</td>
-                        <td>{{ $laporan->tanggal_cetak ? $laporan->tanggal_cetak->format('d-m-Y') : '-' }}</td>
+                        <td>{{ $laporan->tanggal_cetak->format('d-m-Y H:i') }}</td>
                         <td>{{ $laporan->total_barang }}</td>
-                         <td>
-    @if($laporan->file_laporan)
-        <a href="{{ route('laporan.download', $laporan->id) }}" 
-           class="btn btn-sm btn-success">
-            <i class="bi bi-download"></i> Download PDF
-        </a>
-    @else
-        <!-- Untuk rejected PO, generate on-the-fly -->
-        <a href="{{ route('laporan.download', $laporan->id) }}" 
-           class="btn btn-sm btn-primary">
-            <i class="bi bi-file-pdf"></i> Download PDF
-        </a>
-    @endif
-</td>
+                        <td>
+                            @if($laporan->total_barang > 0)
+                                <span class="badge bg-success">Approved</span>
+                            @else
+                                <span class="badge bg-danger">Rejected</span>
+                            @endif
+                        </td>
+                        <td>
+                            <a href="{{ route('laporan.download', $laporan->id) }}" 
+                               class="btn btn-sm btn-primary">
+                                <i class="bi bi-file-pdf"></i> Download PDF
+                            </a>
+                        </td>
                     </tr>
                 @empty
-                  <a href="#" class="btn btn-primary ">Download PDF</a>
                     <tr>
                         <td colspan="7" class="text-center text-muted">Belum ada laporan.</td>
                     </tr>
@@ -55,5 +50,4 @@
 
         {{ $laporans->links() }}
     </div>
-   
 </x-app-layout>

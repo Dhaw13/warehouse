@@ -29,9 +29,13 @@ class PurchaseOrderController extends Controller implements HasMiddleware
     }
 
     public function create()
-    {
-        return view('po.create');
-    }
+{
+    $suppliers = \App\Models\Supplier::orderBy('nama_supplier', 'asc')->get();
+    $barangs = \App\Models\Barang::orderBy('nama_barang', 'asc')->get();
+    
+    return view('po.create', compact('suppliers', 'barangs'));
+}
+
 
     public function store(Request $request)
     {
@@ -95,15 +99,18 @@ class PurchaseOrderController extends Controller implements HasMiddleware
     }
 
     public function edit($id)
-    {
-        $po = PurchaseOrder::with('items')->findOrFail($id);
-        
-        if ($po->status !== 'draft') {
-            return redirect()->route('po.index')->with('error', 'Hanya PO dengan status draft yang bisa diedit');
-        }
-
-        return view('po.edit', compact('po'));
+{
+    $po = PurchaseOrder::with('items')->findOrFail($id);
+    
+    if ($po->status !== 'draft') {
+        return redirect()->route('po.index')->with('error', 'Hanya PO dengan status draft yang bisa diedit');
     }
+
+    $suppliers = \App\Models\Supplier::orderBy('nama_supplier', 'asc')->get();
+    $barangs = \App\Models\Barang::orderBy('nama_barang', 'asc')->get();
+
+    return view('po.edit', compact('po', 'suppliers', 'barangs'));
+}
 
     public function update(Request $request, $id)
     {

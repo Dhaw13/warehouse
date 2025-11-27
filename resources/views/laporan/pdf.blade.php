@@ -19,6 +19,21 @@
             margin: 0;
             color: #800000;
         }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .status-approved {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-rejected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
         .info-table {
             width: 100%;
             margin-bottom: 20px;
@@ -50,6 +65,12 @@
     <div class="header">
         <h2>LAPORAN PENERIMAAN BARANG</h2>
         <p><strong>MY WAREHOUSE SYSTEM</strong></p>
+        
+        @if($laporan->total_barang > 0)
+            <span class="status-badge status-approved">✅ APPROVED - BARANG DITERIMA</span>
+        @else
+            <span class="status-badge status-rejected">❌ REJECTED - BARANG DITOLAK</span>
+        @endif
     </div>
 
     <table class="info-table">
@@ -68,6 +89,16 @@
         <tr>
             <td><strong>Kode Barang</strong></td>
             <td>: {{ $barang->kode_barang ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td><strong>Status</strong></td>
+            <td>: 
+                @if($laporan->total_barang > 0)
+                    <strong style="color: #155724;">DITERIMA</strong>
+                @else
+                    <strong style="color: #721c24;">DITOLAK</strong>
+                @endif
+            </td>
         </tr>
     </table>
 
@@ -93,6 +124,12 @@
             </tr>
         </tbody>
     </table>
+
+    @if($laporan->total_barang == 0)
+        <div style="margin-top: 20px; padding: 15px; background-color: #fff3cd; border-left: 4px solid #ffc107;">
+            <strong>Catatan:</strong> Barang ini ditolak dan TIDAK menambah stok gudang.
+        </div>
+    @endif
 
     <div class="footer">
         <p>

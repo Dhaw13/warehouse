@@ -20,9 +20,14 @@
 
                         <div class="col-md-6 mb-3">
                             <label for="supplier" class="form-label">Supplier <span class="text-danger">*</span></label>
-                            <input type="text" name="supplier" id="supplier" 
-                                   class="form-control @error('supplier') is-invalid @enderror" 
-                                   value="{{ old('supplier') }}" required>
+                            <select name="supplier" id="supplier" class="form-control @error('supplier') is-invalid @enderror" required>
+                                <option value="">-- Pilih Supplier --</option>
+                                @foreach($suppliers as $supp)
+                                    <option value="{{ $supp->nama_supplier }}" {{ old('supplier') == $supp->nama_supplier ? 'selected' : '' }}>
+                                        {{ $supp->nama_supplier }}
+                                    </option>
+                                @endforeach
+                            </select>
                             @error('supplier')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -59,13 +64,20 @@
                             <tbody id="itemsContainer">
                                 <tr class="item-row">
                                     <td>
-                                        <input type="text" name="items[0][nama_barang]" class="form-control" required>
+                                        <select name="items[0][nama_barang]" class="form-control barang-select" required onchange="fillSatuan(this)">
+                                            <option value="">-- Pilih Barang --</option>
+                                            @foreach($barangs as $brg)
+                                                <option value="{{ $brg->nama_barang }}" data-satuan="{{ $brg->satuan }}">
+                                                    {{ $brg->nama_barang }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </td>
                                     <td>
                                         <input type="number" name="items[0][qty]" class="form-control qty-input" min="1" value="1" required>
                                     </td>
                                     <td>
-                                        <input type="text" name="items[0][satuan]" class="form-control" required>
+                                        <input type="text" name="items[0][satuan]" class="form-control satuan-input" required>
                                     </td>
                                     <td>
                                         <input type="number" name="items[0][harga_satuan]" class="form-control harga-input" min="0" step="0.01" required>
@@ -100,15 +112,31 @@
 
     <script>
         let rowIndex = 1;
+        const barangOptions = `
+            <option value="">-- Pilih Barang --</option>
+            @foreach($barangs as $brg)
+                <option value="{{ $brg->nama_barang }}" data-satuan="{{ $brg->satuan }}">{{ $brg->nama_barang }}</option>
+            @endforeach
+        `;
+
+        function fillSatuan(selectElement) {
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            const satuan = selectedOption.getAttribute('data-satuan');
+            const row = selectElement.closest('tr');
+            const satuanInput = row.querySelector('.satuan-input');
+            if (satuan) {
+                satuanInput.value = satuan;
+            }
+        }
 
         function addRow() {
             const container = document.getElementById('itemsContainer');
             const newRow = document.createElement('tr');
             newRow.className = 'item-row';
             newRow.innerHTML = `
-                <td><input type="text" name="items[${rowIndex}][nama_barang]" class="form-control" required></td>
+                <td><select name="items[${rowIndex}][nama_barang]" class="form-control barang-select" required onchange="fillSatuan(this)">${barangOptions}</select></td>
                 <td><input type="number" name="items[${rowIndex}][qty]" class="form-control qty-input" min="1" value="1" required></td>
-                <td><input type="text" name="items[${rowIndex}][satuan]" class="form-control" required></td>
+                <td><input type="text" name="items[${rowIndex}][satuan]" class="form-control satuan-input" required></td>
                 <td><input type="number" name="items[${rowIndex}][harga_satuan]" class="form-control harga-input" min="0" step="0.01" required></td>
                 <td><input type="text" class="form-control subtotal-display" readonly></td>
                 <td><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)"><i class="bi bi-trash"></i></button></td>
@@ -157,7 +185,6 @@
             return 'Rp ' + new Intl.NumberFormat('id-ID').format(amount);
         }
 
-        // Initialize
         attachCalculators();
         calculateTotal();
     </script>
