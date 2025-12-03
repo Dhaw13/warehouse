@@ -20,14 +20,15 @@
 
                         <div class="col-md-6 mb-3">
                             <label for="supplier" class="form-label">Supplier <span class="text-danger">*</span></label>
-                            <select name="supplier" id="supplier" class="form-control @error('supplier') is-invalid @enderror" required>
-                                <option value="">-- Pilih Supplier --</option>
+                            <select name="supplier" id="supplier" class="form-control select2-tags @error('supplier') is-invalid @enderror" required>
+                                <option value="">-- Pilih atau Ketik Supplier Baru --</option>
                                 @foreach($suppliers as $supp)
                                     <option value="{{ $supp->nama_supplier }}" {{ old('supplier') == $supp->nama_supplier ? 'selected' : '' }}>
                                         {{ $supp->nama_supplier }}
                                     </option>
                                 @endforeach
                             </select>
+                            <small class="text-muted">💡 Ketik nama baru jika supplier belum ada</small>
                             @error('supplier')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -64,8 +65,8 @@
                             <tbody id="itemsContainer">
                                 <tr class="item-row">
                                     <td>
-                                        <select name="items[0][nama_barang]" class="form-control barang-select" required onchange="fillSatuan(this)">
-                                            <option value="">-- Pilih Barang --</option>
+                                        <select name="items[0][nama_barang]" class="form-control barang-select select2-tags-barang" required onchange="fillSatuan(this)">
+                                            <option value="">-- Pilih atau Ketik Barang Baru --</option>
                                             @foreach($barangs as $brg)
                                                 <option value="{{ $brg->nama_barang }}" data-satuan="{{ $brg->satuan }}">
                                                     {{ $brg->nama_barang }}
@@ -77,7 +78,7 @@
                                         <input type="number" name="items[0][qty]" class="form-control qty-input" min="1" value="1" required>
                                     </td>
                                     <td>
-                                        <input type="text" name="items[0][satuan]" class="form-control satuan-input" required>
+                                        <input type="text" name="items[0][satuan]" class="form-control satuan-input" required placeholder="Kg, Pcs, Box">
                                     </td>
                                     <td>
                                         <input type="number" name="items[0][harga_satuan]" class="form-control harga-input" min="0" step="0.01" required>
@@ -105,15 +106,64 @@
 
             <div class="mt-3">
                 <a href="{{ route('po.index') }}" class="btn btn-secondary">Batal</a>
-                <button type="submit" class="btn btn-success">Simpan PO</button>
+                <button type="submit" class="btn btn-success">💾 Simpan PO</button>
             </div>
         </form>
     </div>
 
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
+    <!-- jQuery & Select2 JS -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
     <script>
         let rowIndex = 1;
+
+        // Initialize Select2 untuk Supplier
+        $(document).ready(function() {
+            $('#supplier').select2({
+                theme: 'bootstrap-5',
+                tags: true,
+                createTag: function (params) {
+                    return {
+                        id: params.term,
+                        text: params.term,
+                        newTag: true
+                    }
+                },
+                placeholder: '-- Pilih atau Ketik Supplier Baru --',
+                allowClear: true
+            });
+
+            // Initialize Select2 untuk Barang pertama
+            initBarangSelect2();
+        });
+
+        function initBarangSelect2() {
+            $('.select2-tags-barang').each(function() {
+                if (!$(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2({
+                        theme: 'bootstrap-5',
+                        tags: true,
+                        createTag: function (params) {
+                            return {
+                                id: params.term,
+                                text: params.term,
+                                newTag: true
+                            }
+                        },
+                        placeholder: '-- Pilih atau Ketik Barang Baru --',
+                        allowClear: true
+                    });
+                }
+            });
+        }
+
         const barangOptions = `
-            <option value="">-- Pilih Barang --</option>
+            <option value="">-- Pilih atau Ketik Barang Baru --</option>
             @foreach($barangs as $brg)
                 <option value="{{ $brg->nama_barang }}" data-satuan="{{ $brg->satuan }}">{{ $brg->nama_barang }}</option>
             @endforeach
@@ -134,15 +184,18 @@
             const newRow = document.createElement('tr');
             newRow.className = 'item-row';
             newRow.innerHTML = `
-                <td><select name="items[${rowIndex}][nama_barang]" class="form-control barang-select" required onchange="fillSatuan(this)">${barangOptions}</select></td>
+                <td><select name="items[${rowIndex}][nama_barang]" class="form-control barang-select select2-tags-barang" required onchange="fillSatuan(this)">${barangOptions}</select></td>
                 <td><input type="number" name="items[${rowIndex}][qty]" class="form-control qty-input" min="1" value="1" required></td>
-                <td><input type="text" name="items[${rowIndex}][satuan]" class="form-control satuan-input" required></td>
+                <td><input type="text" name="items[${rowIndex}][satuan]" class="form-control satuan-input" required placeholder="Kg, Pcs, Box"></td>
                 <td><input type="number" name="items[${rowIndex}][harga_satuan]" class="form-control harga-input" min="0" step="0.01" required></td>
                 <td><input type="text" class="form-control subtotal-display" readonly></td>
                 <td><button type="button" class="btn btn-sm btn-danger" onclick="removeRow(this)"><i class="bi bi-trash"></i></button></td>
             `;
             container.appendChild(newRow);
             rowIndex++;
+            
+            // Re-initialize Select2 untuk baris baru
+            initBarangSelect2();
             attachCalculators();
         }
 

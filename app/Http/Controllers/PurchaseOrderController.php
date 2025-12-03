@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
+use App\Models\Supplier;
+use App\Models\Barang;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -29,13 +31,12 @@ class PurchaseOrderController extends Controller implements HasMiddleware
     }
 
     public function create()
-{
-    $suppliers = \App\Models\Supplier::orderBy('nama_supplier', 'asc')->get();
-    $barangs = \App\Models\Barang::orderBy('nama_barang', 'asc')->get();
-    
-    return view('po.create', compact('suppliers', 'barangs'));
-}
-
+    {
+        $suppliers = Supplier::orderBy('nama_supplier', 'asc')->get();
+        $barangs = Barang::orderBy('nama_barang', 'asc')->get();
+        
+        return view('po.create', compact('suppliers', 'barangs'));
+    }
 
     public function store(Request $request)
     {
@@ -52,22 +53,41 @@ class PurchaseOrderController extends Controller implements HasMiddleware
 
         DB::beginTransaction();
         try {
+            // Auto-create supplier jika belum ada
+            $supplier = Supplier::firstOrCreate(
+                ['nama_supplier' => $request->supplier],
+                ['kontak' => null, 'alamat' => null]
+            );
+
             // Buat PO
             $po = PurchaseOrder::create([
                 'no_po' => PurchaseOrder::generateNoPo(),
                 'tanggal_po' => $request->tanggal_po,
-                'supplier' => $request->supplier,
+                'supplier' => $supplier->nama_supplier,
                 'keterangan' => $request->keterangan,
                 'status' => 'draft',
                 'created_by' => Auth::id(),
                 'total_harga' => 0
             ]);
 
-            // Buat items & hitung total
+            // Buat items & auto-create barang jika belum ada
             $totalHarga = 0;
             foreach ($request->items as $item) {
                 $subtotal = $item['qty'] * $item['harga_satuan'];
                 
+                // Auto-create barang jika belum ada (dengan stok 0 dulu)
+                $barang = Barang::firstOrCreate(
+                    ['nama_barang' => $item['nama_barang']],
+                    [
+                        'kode_barang' => 'PO-' . strtoupper(substr($item['nama_barang'], 0, 3)) . rand(100, 999),
+                        'jumlah' => 0,
+                        'satuan' => $item['satuan'],
+                        'kondisi' => 'pending', // Nanti diupdate saat verifikasi
+                        'tanggal_masuk' => now(),
+                        'id_supplier' => $supplier->id
+                    ]
+                );
+
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $po->id,
                     'nama_barang' => $item['nama_barang'],
@@ -80,11 +100,10 @@ class PurchaseOrderController extends Controller implements HasMiddleware
                 $totalHarga += $subtotal;
             }
 
-            // Update total harga
             $po->update(['total_harga' => $totalHarga]);
 
             DB::commit();
-            return redirect()->route('po.index')->with('success', 'Purchase Order berhasil dibuat!');
+            return redirect()->route('po.index')->with('success', '✅ Purchase Order berhasil dibuat!');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -99,18 +118,18 @@ class PurchaseOrderController extends Controller implements HasMiddleware
     }
 
     public function edit($id)
-{
-    $po = PurchaseOrder::with('items')->findOrFail($id);
-    
-    if ($po->status !== 'draft') {
-        return redirect()->route('po.index')->with('error', 'Hanya PO dengan status draft yang bisa diedit');
+    {
+        $po = PurchaseOrder::with('items')->findOrFail($id);
+        
+        if ($po->status !== 'draft') {
+            return redirect()->route('po.index')->with('error', 'Hanya PO dengan status draft yang bisa diedit');
+        }
+
+        $suppliers = Supplier::orderBy('nama_supplier', 'asc')->get();
+        $barangs = Barang::orderBy('nama_barang', 'asc')->get();
+
+        return view('po.edit', compact('po', 'suppliers', 'barangs'));
     }
-
-    $suppliers = \App\Models\Supplier::orderBy('nama_supplier', 'asc')->get();
-    $barangs = \App\Models\Barang::orderBy('nama_barang', 'asc')->get();
-
-    return view('po.edit', compact('po', 'suppliers', 'barangs'));
-}
 
     public function update(Request $request, $id)
     {
@@ -133,21 +152,39 @@ class PurchaseOrderController extends Controller implements HasMiddleware
 
         DB::beginTransaction();
         try {
-            // Update PO
+            // Auto-create supplier jika belum ada
+            $supplier = Supplier::firstOrCreate(
+                ['nama_supplier' => $request->supplier],
+                ['kontak' => null, 'alamat' => null]
+            );
+
             $po->update([
                 'tanggal_po' => $request->tanggal_po,
-                'supplier' => $request->supplier,
+                'supplier' => $supplier->nama_supplier,
                 'keterangan' => $request->keterangan,
             ]);
 
             // Hapus items lama
             $po->items()->delete();
 
-            // Buat items baru & hitung total
+            // Buat items baru
             $totalHarga = 0;
             foreach ($request->items as $item) {
                 $subtotal = $item['qty'] * $item['harga_satuan'];
                 
+                // Auto-create barang jika belum ada
+                $barang = Barang::firstOrCreate(
+                    ['nama_barang' => $item['nama_barang']],
+                    [
+                        'kode_barang' => 'PO-' . strtoupper(substr($item['nama_barang'], 0, 3)) . rand(100, 999),
+                        'jumlah' => 0,
+                        'satuan' => $item['satuan'],
+                        'kondisi' => 'pending',
+                        'tanggal_masuk' => now(),
+                        'id_supplier' => $supplier->id
+                    ]
+                );
+
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $po->id,
                     'nama_barang' => $item['nama_barang'],
@@ -160,11 +197,10 @@ class PurchaseOrderController extends Controller implements HasMiddleware
                 $totalHarga += $subtotal;
             }
 
-            // Update total harga
             $po->update(['total_harga' => $totalHarga]);
 
             DB::commit();
-            return redirect()->route('po.index')->with('success', 'Purchase Order berhasil diupdate!');
+            return redirect()->route('po.index')->with('success', '✅ Purchase Order berhasil diupdate!');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -181,6 +217,6 @@ class PurchaseOrderController extends Controller implements HasMiddleware
         }
 
         $po->delete();
-        return redirect()->route('po.index')->with('success', 'Purchase Order berhasil dihapus!');
+        return redirect()->route('po.index')->with('success', '🗑️ Purchase Order berhasil dihapus!');
     }
 }

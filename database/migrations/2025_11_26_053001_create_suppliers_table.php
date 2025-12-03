@@ -6,25 +6,35 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('suppliers', function (Blueprint $table) {
-    $table->id();
-    $table->string('nama_supplier');
-    $table->string('kontak')->nullable();
-    $table->text('alamat')->nullable();
-    $table->timestamps();
-});
+        // Pastikan tabel suppliers sudah ada
+        if (!Schema::hasTable('suppliers')) {
+            Schema::create('suppliers', function (Blueprint $table) {
+                $table->id();
+                $table->string('nama_supplier')->unique();
+                $table->string('kontak')->nullable();
+                $table->text('alamat')->nullable();
+                $table->timestamps();
+            });
+        }
+
+        // Update tabel barangs untuk relasi ke supplier
+        Schema::table('barangs', function (Blueprint $table) {
+            if (!Schema::hasColumn('barangs', 'id_supplier')) {
+                $table->unsignedBigInteger('id_supplier')->nullable()->after('tanggal_masuk');
+                $table->foreign('id_supplier')->references('id')->on('suppliers')->onDelete('set null');
+            }
+        });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
+        Schema::table('barangs', function (Blueprint $table) {
+            $table->dropForeign(['id_supplier']);
+            $table->dropColumn('id_supplier');
+        });
+        
         Schema::dropIfExists('suppliers');
     }
 };
